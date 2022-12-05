@@ -1,0 +1,10 @@
+V0.0 {
+	global:
+		main;
+
+		check_suite_setup_cb;
+
+		check_suite_runner;
+
+	local: *;
+};

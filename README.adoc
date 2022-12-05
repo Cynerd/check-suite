@@ -1,0 +1,212 @@
+= Check Suite (Unit Testing Framework for C with implicit Suite discovery)
+Karel Kočí <cynerd@email.cz>
+v0.0, 2022-12-05
+:icons:
+
+Extension for the unit testing framework for C that adds automatic tests
+collection using the constructor attributed functions. The usage is pretty much
+the same as for the origin Check test framework except it removes tedious
+registration of the test cases. You still can do it manually if you require it,
+but most of the testing can be done without need of manual test registering.
+
+You still have to study the https://libcheck.github.io/check/[Check API and
+usage] so you can use this library.
+
+
+== Dependencies
+
+* https://libcheck.github.io/check/[Unit testing framework for C: Check]
+* https://mesonbuild.com/[Meson build system]
+
+
+== Compilation
+
+To compile this project you have to run:
+
+----
+meson setup builddir
+meson compile -C builddir
+----
+
+Subsequent installation can be done with `meson install -C builddir`.
+
+== Usage
+
+The expected usage is that you link the `libcheck_suite` with C files containing
+your tests and tested code. The Check Suite provides `main` and thus there is no
+need for any initialization.
+
+TIP:: You might want to read the source files itself, as they are pretty short.
+Another very good source for usage examples are Check Suite test's in the
+`tests` directory.
+
+=== Defining suite
+
+The single C file is expected to be single C test suite. It requires unique name
+defined in it and it is common to be same as file name but that is not required.
+The suite name has to be defined as macro `#SUITE "foo"` before you include
+`check_suite.h`:
+
+----
+#define SUITE "foo"
+#include <check_suite.h>
+----
+
+=== Defining test cases
+
+Tests that are part of single suite are also grouped to test cases. Every test
+case can have unique setup and teardown procedure. The test case can be defined
+as follows:
+
+----
+void setup_function(void) {}
+void teardown_function(void) {}
+const double timeout = 0;
+TEST_CASE(foo, setup_function, teardown_function, timeout) {}
+----
+
+You can pass `NULL` for either of the functions. You can also pass drop the
+latter arguments. The default for `timeout` then is default Check timeout
+(environment variable `CK_DEFAULT_TIMEOUT`). The default for the
+setup function is macro `DEFAULT_SETUP` and for the teardown function is
+`DEFAULT_TEARDOWN`. You can define these macros before you include
+`check_suite.h` or they are set to `NULL`.
+
+There is also possibility to apply any other modifications to the test case by
+writing some function body. The function gets current test case as argument
+called `tcase`. That is for example:
+
+----
+TEST_CASE(fee) {
+	tcase_set_tags(tcase, "fee");
+}
+----
+
+=== Defining tests
+
+There are three types of types based on expected test. There is simple `TEST`
+that is used most of the time. Then there is `TEST_RAISE_SIGNAL` for signal
+checking (note that this works only if you run every test in `fork()` which is
+default). And lastly there is `TEST_EXIT` that checks exit code (same limitation
+applies as for `TEST_RAISE_SIGNAL`).
+
+The simple test looks like this:
+
+----
+TEST(foo, check_foos) {
+	ck_assert_int_eq(answer4everything(), 42);
+}
+END_TEST
+----
+
+The fist argument `foo` is the test case name. The second argument is name of
+the test.
+
+The usage of `TEST_RAISE_SIGNAL` and `TEST_EXIT` are are pretty much the same
+except that they expect additional argument. That is signal number in case of
+`TEST_RAISE_SIGNAL` and exit code in case of `TEST_EXIT`:
+
+----
+TEST_RAISE_SIGNAL(foo, check_raise, SIGUSR1) {
+	raise(SIGUSR1);
+}
+END_TEST
+
+TEST_EXIT(foo, check_exit, 1) {
+	exit(1);
+}
+END_TEST
+----
+
+==== Loop tests
+
+It is very common that we run the same test check with different data or just
+incrementing values. For that reason there are loop tests. They allow you to go
+trough integer value from some value to the other (always incrementing by 1).
+The test is provided with loop variable `_i`.
+
+----
+LOOP_TEST(foo, check_fooses, 0, 42) {
+	ck_assert_int_lt(_i, 42);
+}
+----
+
+This checks if all numbers from 0 to 42 (excluding) are less than 42.
+
+There are also variants `LOOP_TEST_RAISE_SIGNAL` and `LOOP_TEST_EXIT`. These
+macros expect signal and exit code respectively as a third additional argument
+(this starting index is fourth argument and ending index fifth).
+
+==== Array tests
+
+The most common usage of the loop tests is to iterate over array that is used to
+parameterize tests. To simplify this usage there is dedicated macro
+`ARRAY_TEST` and its variants in terms of `ARRAY_TEST_RAISE_SIGNAL` and
+`ARRAY_TEST_EXIT`. Compared to the `LOOP_TEST` the `ARRAY_TEST` expects only
+name of the array it is expected to iterate over. It provides on top of `_i`
+(which is index to the array) also value from the array as `_d`.
+
+The common usage would look like this:
+
+----
+static const struct {
+	const char *format;
+	int value;
+	const char *result;
+} check_printf_d[] = {
+	{"%d", 42, "42"},
+	{"0x%x", 42, "0x2a"},
+};
+ARRAY_TEST(foo, check_printf, check_printf_d) {
+	char *str = NULL;
+	ck_assert_int_eq(asprintf(&str, _d.format, _d.value), strlen(_d.result));
+	ck_assert_str_eq(str, _d.result);
+	free(str);
+}
+----
+
+
+
+== Running tests
+
+This project contains basic tests in directory tests.
+
+To run tests you have to either use `debug` build type (which is commonly the
+default for meson) or explicitly enable them using `meson configure
+-Dtests=enabled builddir`. To execute all tests run:
+
+----
+meson test -C builddir
+----
+
+You can also run tests with Valgrind tool such as `memcheck`:
+
+----
+VALGRIND=memcheck meson test -C builddir
+----
+
+=== Code coverage report
+
+There is also possibility to generate code coverage report from test cases. To
+do so you can run:
+
+----
+meson setup -Db_coverage=true builddir
+meson test -C builddir
+ninja -C builddir coverage-html
+----
+
+The coverage report is generated in directory:
+`builddir/meson-logs/coveragereport`.
+
+== Linting the code
+
+The code can also be linted if linters are installed. There are two linter
+supported at the moment. There is `cppcheck` and `flawfinder`. To run them you
+can do:
+
+----
+meson setup builddir
+meson compile -C builddir ./cppcheck
+meson compile -C builddir ./flawfinder
+----
