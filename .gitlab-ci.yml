@@ -132,7 +132,6 @@ include:
   extends: .nix
   allow_failure: true
   before_script:
-    - !reference [.nix, before_script]
     - "nix develop -c meson setup build"
 
 cppcheck:
