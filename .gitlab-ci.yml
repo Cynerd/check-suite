@@ -37,6 +37,7 @@ build:
     expire_in: 1 week
     paths:
     - 'build/meson-logs/'
+    - 'build/meson-info/'
 
 build:musl:
   extends: ["build", ".musl"]
