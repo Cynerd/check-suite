@@ -1,4 +1,4 @@
-project('check_suite', 'c',
+project('check-suite', 'c',
   version: '0.1.0',
   license : 'MIT',
   default_options: 'c_std=c17',
@@ -16,7 +16,8 @@ meson.override_dependency(meson.project_name(), libcheck_suite_dep)
 
 
 test_buildtypes = ['debug', 'debugoptimized']
-if not meson.is_subproject() and (get_option('tests').enabled() or (get_option('tests').auto() and get_option('buildtype') in test_buildtypes))
+opt_tests = get_option('tests')
+if not meson.is_subproject() and (opt_tests.enabled() or (opt_tests.auto() and get_option('buildtype') in test_buildtypes))
   subdir('tests')
 endif
 

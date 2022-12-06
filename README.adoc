@@ -36,7 +36,7 @@ The expected usage is that you link the `libcheck_suite` with C files containing
 your tests and tested code. The Check Suite provides `main` and thus there is no
 need for any initialization.
 
-TIP:: You might want to read the source files itself, as they are pretty short.
+TIP: You might want to read the source files itself, as they are pretty short.
 Another very good source for usage examples are Check Suite test's in the
 `tests` directory.
 

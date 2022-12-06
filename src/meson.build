@@ -2,7 +2,7 @@ libcheck_suite_sources = files(
   'runner.c',
 )
 
-libcheck_suite = library('check_suite', libcheck_suite_sources,
+libcheck_suite = library('check-suite', libcheck_suite_sources,
   version: '0.0.0',
   dependencies: [check],
   include_directories: includes,
