@@ -85,7 +85,7 @@ static void check_suite_add_tcase(TCase *tcase) {
 		sizeof(array) / sizeof(*(array))) { \
 		name##_array_fn(_i, array[_i]); \
 	} \
-	static void name##_array_fn(__typeof__(*array) _d CK_ATTRIBUTE_UNUSED)
+	static void name##_array_fn(int _i, __typeof__(*array) _d CK_ATTRIBUTE_UNUSED)
 
 #define ARRAY_TEST(tcase, name, array) \
 	_ARRAY_TEST(tcase_add_loop_test, tcase, name, array, name)
