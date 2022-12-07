@@ -33,11 +33,9 @@ build:
     - nix develop $DEVELOP_ARG -c meson setup build $SETUP_ARGS
     - nix develop $DEVELOP_ARG -c meson compile -C build
   artifacts:
-    when: on_failure
     expire_in: 1 week
     paths:
-    - 'build/meson-logs/'
-    - 'build/meson-info/'
+    - 'build'
 
 build:musl:
   extends: ["build", ".musl"]
