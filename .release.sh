@@ -23,8 +23,8 @@ CHANGELOG="$(awk -v "version=${CI_COMMIT_TAG#v}" '
         }
     ' CHANGELOG.md)"
 if [ -z "$CHANGELOG" ]; then
-    echo "Changelog is empty. Have you updated the version?" >&2
-    exit 1
+	echo "Changelog is empty. Have you updated the version?" >&2
+	exit 1
 fi
 
 declare -a args

@@ -63,7 +63,6 @@ build-werror:llvm:
 
 dist:
   extends: build
-  extends: .nix
   script:
     - "nix develop -c meson build"
     - "nix develop -c meson dist -C build --formats xztar,gztar,zip"

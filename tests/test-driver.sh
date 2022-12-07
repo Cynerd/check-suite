@@ -25,23 +25,22 @@ default_valgrind_args[helgrind]="$default_valgrind_args_common"
 default_valgrind_args[drd]="$default_valgrind_args_common"
 ################################################################################
 
-
 usage() {
 	echo "Usage: $0 [OPTION].. BINARY [ARG].." >&2
 }
 help() {
 	usage
 	{
-	echo "This script runs given binary either directly or trough valgrind"
-	echo "depending on its configuration."
-	echo
-	echo "Options:"
-	echo "  -h     Print this help text"
-	echo "  -n     Do not wrap with valgrind but rather pass it as environment variable"
-	echo "  -v BIN Valgrind binary to use"
-	echo "  -a ARG Add given argument as valgrind argument"
-	echo "Environment variables:"
-	echo "  VALGRIND=TOOL: run tests with valgrind with given tool"
+		echo "This script runs given binary either directly or trough valgrind"
+		echo "depending on its configuration."
+		echo
+		echo "Options:"
+		echo "  -h     Print this help text"
+		echo "  -n     Do not wrap with valgrind but rather pass it as environment variable"
+		echo "  -v BIN Valgrind binary to use"
+		echo "  -a ARG Add given argument as valgrind argument"
+		echo "Environment variables:"
+		echo "  VALGRIND=TOOL: run tests with valgrind with given tool"
 	} >&2
 }
 
@@ -50,20 +49,20 @@ valgrind="valgrind"
 no_wrap="n"
 while getopts "hna:" opt; do
 	case "$opt" in
-		h)
-			help
-			exit 0
-			;;
-		n)
-			no_wrap="y"
-			;;
-		a)
-			valgrind_args+=("$OPTARG")
-			;;
-		*)
-			usage
-			exit 1
-			;;
+	h)
+		help
+		exit 0
+		;;
+	n)
+		no_wrap="y"
+		;;
+	a)
+		valgrind_args+=("$OPTARG")
+		;;
+	*)
+		usage
+		exit 1
+		;;
 	esac
 done
 shift $((OPTIND - 1))
@@ -80,5 +79,5 @@ if [[ -v VALGRIND ]]; then
 		exec "$valgrind" ${default_valgrind_args[$VALGRIND]} "${valgrind_args[@]}" --tool="$VALGRIND" -- "$@"
 	fi
 else
-	exec "$@"	
+	exec "$@"
 fi
