@@ -30,7 +30,7 @@ build:
   stage: build
   extends: .nix
   script:
-    - nix develop $DEVELOP_ARG -c meson setup build $SETUP_ARGS
+    - nix develop $DEVELOP_ARG -c meson setup build --buildtype=release $SETUP_ARGS
     - nix develop $DEVELOP_ARG -c meson compile -C build
   artifacts:
     expire_in: 1 week
@@ -84,7 +84,7 @@ tests:
   extends: .nix
   needs: ["build"]
   script:
-    - "nix develop $DEVELOP_ARG -c meson setup build"
+    - "nix develop $DEVELOP_ARG -c meson setup --reconfigure --buildtype=debug build"
     - "nix develop $DEVELOP_ARG -c meson test -C build"
   artifacts:
     expire_in: 1 week
