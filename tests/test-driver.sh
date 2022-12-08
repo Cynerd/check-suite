@@ -9,20 +9,22 @@
 # environment variable.
 set -eu
 ################################################################################
-declare -A default_valgrind_args
-declare default_valgrind_args_common
-default_valgrind_args_common+='--track-fds=yes '
-default_valgrind_args_common+='--trace-children=yes '
-default_valgrind_args_common+='--child-silent-after-fork=no '
+declare -a default_valgrind_args
+default_valgrind_args+=('--track-fds=yes')
+default_valgrind_args+=('--trace-children=yes')
+default_valgrind_args+=('--child-silent-after-fork=no')
 
-default_valgrind_args[memcheck]="$default_valgrind_args_common"
-default_valgrind_args[memcheck]+="--leak-check=full "
-default_valgrind_args[memcheck]+="--show-leak-kinds=definite,indirect,possible "
-default_valgrind_args[memcheck]+="--track-origins=yes "
+case "${VALGRIND:-}" in
+memcheck)
+	default_valgrind_args+=('--leak-check=full')
+	default_valgrind_args+=('--show-leak-kinds=definite,indirect,possible')
+	default_valgrind_args+=('--track-origins=yes')
+	;;
+helgrind) ;;
 
-default_valgrind_args[helgrind]="$default_valgrind_args_common"
+drd) ;;
 
-default_valgrind_args[drd]="$default_valgrind_args_common"
+esac
 ################################################################################
 
 usage() {
@@ -73,10 +75,10 @@ shift $((OPTIND - 1))
 
 if [[ -v VALGRIND ]]; then
 	if [[ "$no_wrap" == "y" ]]; then
-		export VALGRIND="$valgrind ${default_valgrind_args[$VALGRIND]} ${valgrind_args[*]} --tool=$VALGRIND"
+		export VALGRIND="$valgrind ${default_valgrind_args[*]} ${valgrind_args[*]} --tool=$VALGRIND"
 		exec "$@"
 	else
-		exec "$valgrind" ${default_valgrind_args[$VALGRIND]} "${valgrind_args[@]}" --tool="$VALGRIND" -- "$@"
+		exec "$valgrind" "${default_valgrind_args[@]}" "${valgrind_args[@]}" --tool="$VALGRIND" -- "$@"
 	fi
 else
 	exec "$@"
