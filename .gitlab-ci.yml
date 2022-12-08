@@ -82,25 +82,28 @@ nix:
 tests:
   stage: test
   extends: .nix
+  needs: ["build"]
   script:
     - "nix develop $DEVELOP_ARG -c meson setup build"
     - "nix develop $DEVELOP_ARG -c meson test -C build"
   artifacts:
-    when: on_failure
     expire_in: 1 week
     paths:
-      - 'build/meson-logs/'
+      - 'build'
     reports:
       junit: 'build/meson-logs/testlog.junit.xml'
 
 tests:musl:
   extends: ["tests", ".musl"]
+  needs: ["build:musl"]
 
 tests:llvm:
   extends: ["tests", ".llvm"]
+  needs: ["build:llvm"]
 
 valgrind:memcheck:
   extends: tests
+  needs: ["tests"]
   variables:
     VALGRIND: memcheck
 
@@ -117,6 +120,7 @@ valgrind:drd:
 nix-check:
   stage: test
   extends: .nix
+  needs: ["nix"]
   script:
     - nix flake check
 
@@ -128,6 +132,7 @@ include:
 .linter:
   stage: test
   extends: .nix
+  needs: []
   allow_failure: true
   before_script:
     - "nix develop -c meson setup build"
@@ -148,26 +153,26 @@ shellcheck:
     - "git ls-files '**.sh' | xargs nix develop -c shellcheck"
 
 ## Code Style stage ############################################################
-clang-format:
+.style:
   stage: style
   extends: .nix
+  needs: []
   allow_failure: true
+
+clang-format:
+  extends: .style
   script:
     - "git ls-files '**.[ch]' | xargs nix develop -c clang-format -i"
     - "git diff --exit-code"
 
 shell-format:
-  stage: style
-  extends: .nix
-  allow_failure: true
+  extends: .style
   script:
     - "git ls-files '**.sh' | xargs nix develop -c shfmt --binary-next-line -w"
     - "git diff --exit-code"
 
 nixfmt:
-  stage: style
-  extends: .nix
-  allow_failure: true
+  extends: .style
   script:
     - "nix fmt"
     - "git diff --exit-code"
@@ -176,7 +181,9 @@ nixfmt:
 coverage:
   stage: coverage
   extends: .nix
-  needs: ["tests"]
+  needs:
+    - job: tests
+      artifacts: false
   script:
     - "nix develop -c meson setup -Db_coverage=true build"
     - "nix develop -c meson test -C build"
@@ -195,9 +202,7 @@ release:
   image: "registry.gitlab.com/gitlab-org/release-cli:latest"
   rules:
     - if: '$CI_COMMIT_TAG'
-  needs:
-    - job: dist
-      artifacts: true
+  needs: ["dist"]
   before_script:
     - "apk update"
     - "apk add bash curl yq"
