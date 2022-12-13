@@ -10,6 +10,7 @@
 set -eu
 ################################################################################
 declare -a default_valgrind_args
+default_valgrind_args+=('--error-exitcode=8')
 default_valgrind_args+=('--track-fds=yes')
 default_valgrind_args+=('--trace-children=yes')
 default_valgrind_args+=('--child-silent-after-fork=no')
