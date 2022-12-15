@@ -33,7 +33,7 @@ while read -r dist; do
 	dist="$(echo $dist | head -1)" # We need shell expansion here to expand glob
 	[ -f "$dist" ] || {
 		echo "Ignoring '$dist' as it is not file"
-		continue;
+		continue
 	}
 	URL="${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/release/${VERSION}/${dist##*/}"
 	echo "$dist -> $URL"
