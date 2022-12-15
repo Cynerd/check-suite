@@ -29,6 +29,12 @@ fi
 
 declare -a args
 while read -r dist; do
+	# shellcheck disable=SC2086
+	dist="$(echo $dist | head -1)" # We need shell expansion here to expand glob
+	[ -f "$dist" ] || {
+		echo "Ignoring '$dist' as it is not file"
+		continue;
+	}
 	URL="${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/release/${VERSION}/${dist##*/}"
 	echo "$dist -> $URL"
 	curl --header "JOB-TOKEN: ${CI_JOB_TOKEN}" --upload-file "${dist}" "${URL}"
