@@ -3,6 +3,7 @@ project('check-suite', 'c',
   license : 'MIT',
   default_options: 'c_std=c17',
 )
+pkg = import('pkgconfig')
 
 add_project_arguments('-D_GNU_SOURCE', language: 'c')
 cc = meson.get_compiler('c')

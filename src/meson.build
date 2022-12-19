@@ -18,7 +18,7 @@ libcheck_suite_dep = declare_dependency(
 )
 
 
-pkg_mod = import('pkgconfig')
-pkg_mod.generate(libcheck_suite,
-  description: 'Unit testing framework for C with implicit suite registration'
+pkg.generate(libcheck_suite,
+  description: 'Unit testing framework for C with implicit suite registration',
+  requires: 'check',
 )
