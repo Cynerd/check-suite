@@ -14,7 +14,7 @@
           stdenv.mkDerivation {
             pname = "check-suite";
             version =
-              head (match ".*project\\(.*version:[ ]*'([^']+)'.*"
+              head (match ".*project\\([^\\)]*version: *'([^']+)'.*"
                 (readFile ./meson.build));
 
             src = ./.;
