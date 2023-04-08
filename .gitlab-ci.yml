@@ -14,9 +14,26 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
   GIT_SUBMODULE_UPDATE_FLAGS: --jobs 2
 
+variables:
+  GIT_DEPTH: 0
+  GIT_SUBMODULE_STRATEGY: recursive
+  GIT_SUBMODULE_UPDATE_FLAGS: --jobs 2
+
 .nix:
+  image: nixos/nix
   tags:
-    - nix
+    - docker
+  cache:
+    key: "nix"
+    paths:
+      - ".nix-cache"
+  before_script:
+    - echo "experimental-features = nix-command flakes" >>/etc/nix/nix.conf
+    - echo "system-features = nixos-test benchmark big-parallel" >>/etc/nix/nix.conf
+    - find /nix/store -maxdepth 1 ! -name \*.drv | sort >/nix/.before
+  after_script:
+    - find /nix/store -maxdepth 1 ! -name \*.drv | sort >/nix/.after
+    - comm -13 /nix/.before /nix/.after | xargs nix copy --to "file://$PWD/.nix-cache"
 
 .musl:
   variables:
@@ -134,17 +151,17 @@ include:
   extends: .nix
   needs: []
   allow_failure: true
-  before_script:
-    - "nix develop -c meson setup build"
 
 cppcheck:
   extends: .linter
   script:
+    - "nix develop -c meson setup build"
     - "nix develop -c meson compile -C build ./cppcheck"
 
 flawfinder:
   extends: .linter
   script:
+    - "nix develop -c meson setup build"
     - "nix develop -c meson compile -C build ./flawfinder"
 
 shellcheck:
