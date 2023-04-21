@@ -9,55 +9,59 @@
     with builtins;
     with flake-utils.lib;
     with nixpkgs.lib; let
-      pkg_check_suite = pkgs:
-        with pkgs;
-          stdenv.mkDerivation {
+      packages = pkgs:
+        with pkgs; {
+          check-suite = stdenv.mkDerivation {
             pname = "check-suite";
-            version =
-              head (match ".*project\\([^\\)]*version: *'([^']+)'.*"
-                (readFile ./meson.build));
-
-            src = ./.;
-
+            version = replaceStrings ["\n"] [""] (readFile ./version);
+            src = builtins.path {
+              path = ./.;
+              filter = path: type: ! hasSuffix ".nix" path;
+            };
             buildInputs = [check];
             nativeBuildInputs = [meson ninja pkg-config];
           };
+        };
     in
       {
         overlays = {
-          check-suite = final: prev: {check-suite = pkg_check_suite prev;};
+          check-suite = final: prev: packages (id prev);
           default = self.overlays.check-suite;
         };
       }
-      // eachDefaultSystem (system: {
+      // eachDefaultSystem (system: let
+        pkgs = nixpkgs.legacyPackages.${system}.extend self.overlays.default;
+      in {
         packages = filterPackages system rec {
-          check-suite = pkg_check_suite nixpkgs.legacyPackages.${system};
+          inherit (pkgs) check-suite;
           default = check-suite;
         };
-
-        legacyPackages = import nixpkgs {
-          # The legacyPackages imported as overlay allows us to use pkgsCross
-          inherit system;
-          overlays = [self.overlays.default];
-          crossOverlays = [self.overlays.default];
-        };
+        legacyPackages = pkgs;
 
         devShells = filterPackages system {
           default = nixpkgs.legacyPackages.${system}.mkShell {
             packages = with nixpkgs.legacyPackages.${system}; [
+              # Linters and formatters
               cppcheck
               flawfinder
               clang-tools_14
               shellcheck
               shfmt
+              # Testing and coverage
               valgrind
-              lcov
+              gcovr
             ];
             inputsFrom = [self.packages.${system}.check-suite];
             meta.platforms = platforms.linux;
           };
         };
 
+        checks = {
+          inherit (self.packages.${system}) default;
+          statix =
+            pkgs.runCommandNoCC "check-statix" {}
+            "${pkgs.statix}/bin/statix check ${./.} && touch $out";
+        };
         formatter = nixpkgs.legacyPackages.${system}.alejandra;
       });
 }

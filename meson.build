@@ -1,5 +1,5 @@
 project('check-suite', 'c',
-  version: '1.0.1',
+  version: files('version'),
   license : 'MIT',
   default_options: 'c_std=c17',
 )
