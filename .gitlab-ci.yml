@@ -38,9 +38,6 @@ variables:
 .musl:
   variables:
     DEVELOP_ARG: .#pkgsMusl.check-suite
-.llvm:
-  variables:
-    DEVELOP_ARG: .#pkgsLLVM.check-suite
 
 ## Build stage #################################################################
 build:
@@ -57,9 +54,6 @@ build:
 build:musl:
   extends: ["build", ".musl"]
 
-build:llvm:
-  extends: ["build", ".llvm"]
-
 build-werror:
   extends: build
   allow_failure: true
@@ -70,11 +64,6 @@ build-werror:musl:
   extends: build-werror
   variables:
     DEVELOP_ARG: .#pkgsMusl.check-suite
-
-build-werror:llvm:
-  extends: build-werror
-  variables:
-    DEVELOP_ARG: .#pkgsLLVM.check-suite
 
 dist:
   extends: build
@@ -113,10 +102,6 @@ tests:
 tests:musl:
   extends: ["tests", ".musl"]
   needs: ["build:musl"]
-
-tests:llvm:
-  extends: ["tests", ".llvm"]
-  needs: ["build:llvm"]
 
 valgrind:memcheck:
   extends: tests
