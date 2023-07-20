@@ -40,6 +40,8 @@ TIP: You might want to read the source files itself, as they are pretty short.
 Another very good source for usage examples are Check Suite test's in the
 `tests` directory.
 
+You can also read the link:./tests/example.c[test example] in this repository.
+
 === Defining suite
 
 The single C file is expected to be single C test suite. It requires unique name
@@ -165,6 +167,21 @@ ARRAY_TEST(foo, check_printf, check_printf_d) {
 }
 ----
 
+TIP: The `array` is optional and if not specified then it is expected to be test
+name with `_d` appended.
+
+==== Futher check runner modifications
+
+There is possibility to modify Check's runner manually, although Check Suite is
+designed to automate that as much as possible. This is provided in case the
+default settings chosen by Check Suite are not ideal for you.
+
+You can define function `void check_suite_setup_cb(void)`. This function is
+called right before tests are executed. You can use global variable
+`SRunner *check_suite_runner` in it.
+
+WARNING: The fork status is set to `true` by Check Suite and setting it to
+`false` is going to break `TEST*_EXIT` macros.
 
 
 == Running tests

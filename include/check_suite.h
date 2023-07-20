@@ -65,11 +65,13 @@ static void check_suite_add_tcase(TCase *tcase) {
 	} \
 	START_TEST(name)
 
+
 #define TEST(tcase, name) _TEST(tcase_add_test, tcase, name, name)
 #define TEST_RAISE_SIGNAL(tcase, name, signal) \
 	_TEST(tcase_add_test_raise_signal, tcase, name, name, signal)
 #define TEST_EXIT(tcase, name, exit_value) \
 	_TEST(tcase_add_exit_test, tcase, name, name, exit_value)
+
 
 #define LOOP_TEST(tcase, name, s, e) \
 	_TEST(tcase_add_loop_test, tcase, name, name, s, e)
@@ -77,6 +79,7 @@ static void check_suite_add_tcase(TCase *tcase) {
 	_TEST(tcase_add_test_raise_signal, tcase, name, name, signal, s, e)
 #define LOOP_TEST_EXIT(tcase, name, exit_value, s, e) \
 	_TEST(tcase_add_exit_test, tcase, name, name, exit_value, s, e)
+
 
 #define _ARRAY_TEST(tcase_add, tcase, name, array, ...) \
 	static void name##_array_fn( \
@@ -87,11 +90,29 @@ static void check_suite_add_tcase(TCase *tcase) {
 	} \
 	static void name##_array_fn(int _i, __typeof__(*array) _d CK_ATTRIBUTE_UNUSED)
 
-#define ARRAY_TEST(tcase, name, array) \
+#define __array_test3(tcase, name, array) \
 	_ARRAY_TEST(tcase_add_loop_test, tcase, name, array, name)
-#define ARRAY_TEST_RAISE_SIGNAL(tcase, name, signal, array) \
+#define __array_test2(tcase, name) __array_test3(tcase, name, name##_d)
+#define __array_test_select(_1, _2, _3, X, ...) X
+#define ARRAY_TEST(...) \
+	__array_test_select(__VA_ARGS__, __array_test3, __array_test2)(__VA_ARGS__)
+
+#define __array_test_raise_signal4(tcase, name, signal, array) \
 	_ARRAY_TEST(tcase_add_loop_test_raise_signal, tcase, name, array, name, signal)
-#define ARRAY_TEST_EXIT(tcase, name, exit_value, array) \
+#define __array_test_raise_signal3(tcase, name, signal) \
+	__array_test_raise_signal4(tcase, name, signal, name##_d)
+#define __array_test_raise_signal_select(_1, _2, _3, _4, X, ...) X
+#define ARRAY_TEST_RAISE_SIGNAL(...) \
+	__array_test_select(__VA_ARGS__, __array_test_raise_signal4, \
+		__array_test_raise_signal3)(__VA_ARGS__)
+
+#define __array_test_exit5(tcase, name, exit_value, array) \
 	_ARRAY_TEST(tcase_add_loop_exit_test, tcase, name, array, name, exit_value)
+#define __array_test_exit4(tcase, name, exit_value) \
+	__array_test_exit5(tcase, name, exit_value, name##_d)
+#define __array_test_exit_select(_1, _2, _3, _4, _5, X, ...) X
+#define ARRAY_TEST_EXIT(...) \
+	__array_test_exit_select( \
+		__VA_ARGS__, __array_test_exit5, __array_test_exit4)(__VA_ARGS__)
 
 #endif
