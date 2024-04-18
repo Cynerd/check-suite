@@ -1,7 +1,8 @@
 project('check-suite', 'c',
-  version: files('version'),
+  version: run_command(find_program('bash'), './.version.sh', check: true).stdout().strip(),
   license : 'MIT',
   default_options: 'c_std=c17',
+  meson_version: '>=0.57.0',
 )
 pkg = import('pkgconfig')
 

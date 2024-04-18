@@ -1,4 +1,5 @@
 stages:
+  - devenv
   - build
   - test
   - lint
@@ -11,16 +12,10 @@ workflow:
     - if: $CI_PIPELINE_SOURCE == "push"
 
 variables:
-  GIT_SUBMODULE_STRATEGY: recursive
-  GIT_SUBMODULE_UPDATE_FLAGS: --jobs 2
-
-variables:
   GIT_DEPTH: 0
-  GIT_SUBMODULE_STRATEGY: recursive
-  GIT_SUBMODULE_UPDATE_FLAGS: --jobs 2
 
 .nix:
-  image: nixos/nix
+  image: registry.gitlab.com/cynerd/gitlab-ci-nix
   tags:
     - docker
   cache:
@@ -28,84 +23,91 @@ variables:
     paths:
       - ".nix-cache"
   before_script:
-    - echo "experimental-features = nix-command flakes" >>/etc/nix/nix.conf
-    - echo "system-features = nixos-test benchmark big-parallel" >>/etc/nix/nix.conf
-    - find /nix/store -maxdepth 1 ! -name \*.drv | sort >/nix/.before
+    - gitlab-ci-nix-cache-before
   after_script:
-    - find /nix/store -maxdepth 1 ! -name \*.drv | sort >/nix/.after
-    - comm -13 /nix/.before /nix/.after | xargs nix copy --to "file://$PWD/.nix-cache"
+    - gitlab-ci-nix-cache-after
+
+## Development environment #####################################################
+devenv:
+  stage: devenv
+  extends: .nix
+  script:
+    - nix develop -c true
+
+## Build stage #################################################################
+.build:
+  stage: build
+  extends: .nix
+  needs: ["devenv"]
 
 .musl:
   variables:
-    DEVELOP_ARG: .#pkgsMusl.check-suite
+    NIXATTR: .#musl
 
-## Build stage #################################################################
 build:
-  stage: build
-  extends: .nix
+  extends: .build
   script:
-    - nix develop $DEVELOP_ARG -c meson setup build --buildtype=release $SETUP_ARGS
-    - nix develop $DEVELOP_ARG -c meson compile -C build
+    - nix develop --quiet $NIXATTR -c meson setup build -Doptimization=plain $SETUP_ARGS
+    - nix develop --quiet $NIXATTR -c meson compile -C build
   artifacts:
     expire_in: 1 week
     paths:
-    - 'build'
+    - 'build/'
 
 build:musl:
   extends: ["build", ".musl"]
 
 build-werror:
   extends: build
+  needs:
+    - job: build
+      artifacts: false
   allow_failure: true
   variables:
     SETUP_ARGS: --werror
 
 build-werror:musl:
-  extends: build-werror
-  variables:
-    DEVELOP_ARG: .#pkgsMusl.check-suite
-
-dist:
-  extends: build
-  script:
-    - "nix develop -c meson build"
-    - "nix develop -c meson dist -C build --formats xztar,gztar,zip"
-    - "mv build/meson-dist/* ./"
-  artifacts:
-    expire_in: 1 month
-    paths:
-      - "*.tar.xz"
-      - "*.tar.gz"
-      - "*.zip"
+  extends: ["build-werror", ".musl"]
+  needs:
+    - job: build:musl
+      artifacts: false
 
 nix:
   stage: build
   extends: .nix
   script:
-    - nix build
+    - nix build $NIXATTR
+
+nix:musl:
+  extends: ["nix", ".musl"]
 
 ## Test stage ##################################################################
-tests:
+.test:
   stage: test
   extends: .nix
+  needs: ["devenv"]
+
+tests:
+  extends: .test
   needs: ["build"]
   script:
-    - "nix develop $DEVELOP_ARG -c meson setup --reconfigure --buildtype=debug build"
-    - "nix develop $DEVELOP_ARG -c meson test -C build"
+    - ulimit -n 1024 # workaround for Valgrind
+    - nix develop --quiet $NIXATTR -c meson setup build -Doptimization=plain -Db_coverage=true
+    - nix develop --quiet $NIXATTR -c meson test -C build
   artifacts:
     expire_in: 1 week
     paths:
-      - 'build'
+      - 'build/'
     reports:
       junit: 'build/meson-logs/testlog.junit.xml'
 
 tests:musl:
   extends: ["tests", ".musl"]
   needs: ["build:musl"]
+  allow_failure: true
 
 valgrind:memcheck:
   extends: tests
-  needs: ["tests"]
   variables:
     VALGRIND: memcheck
 
@@ -120,64 +122,95 @@ valgrind:drd:
     VALGRIND: drd
 
 nix-check:
-  stage: test
-  extends: .nix
-  needs: ["nix"]
+  extends: .test
+  needs:
+    - job: nix
+      artifacts: false
   script:
     - nix flake check
 
 include:
-  - template: Security/SAST.gitlab-ci.yml
   - template: Security/Secret-Detection.gitlab-ci.yml
 
 ## Lint stage ##################################################################
 .linter:
-  stage: test
+  stage: lint
   extends: .nix
-  needs: []
+  needs: ["devenv"]
   allow_failure: true
 
-cppcheck:
+.mesonlinter:
   extends: .linter
   script:
-    - "nix develop -c meson setup build"
-    - "nix develop -c meson compile -C build ./cppcheck"
+    - nix develop --quiet -c meson setup build -Doptimization=plain
+    - nix develop --quiet -c meson compile -C build $COMPILE_ARG
+
+cppcheck:
+  extends: .mesonlinter
+  variables:
+    COMPILE_ARG: ./cppcheck
 
 flawfinder:
-  extends: .linter
-  script:
-    - "nix develop -c meson setup build"
-    - "nix develop -c meson compile -C build ./flawfinder"
+  extends: .mesonlinter
+  variables:
+    COMPILE_ARG: ./flawfinder
 
 shellcheck:
   extends: .linter
   script:
-    - "git ls-files '**.sh' | xargs nix develop -c shellcheck"
+    - git ls-files '**.sh' | xargs nix develop --quiet -c shellcheck
+
+statix:
+  extends: .linter
+  script:
+    - nix develop --quiet -c statix check .
 
 ## Code Style stage ############################################################
 .style:
   stage: style
   extends: .nix
-  needs: []
+  needs: ["devenv"]
   allow_failure: true
+
+muon:
+  extends: .style
+  script:
+    - git ls-files '**/meson.build' meson_options.txt | nix develop --quiet -c xargs -n 1 muon fmt -c .muon_fmt.ini -i
+    - git diff --exit-code
 
 clang-format:
   extends: .style
   script:
-    - "git ls-files '**.[ch]' | xargs nix develop -c clang-format -i"
-    - "git diff --exit-code"
+    - git ls-files '**.[ch]' | xargs nix develop --quiet -c clang-format -i
+    - git diff --exit-code
 
 shell-format:
   extends: .style
   script:
-    - "git ls-files '**.sh' | xargs nix develop -c shfmt --binary-next-line -w"
-    - "git diff --exit-code"
+    - git ls-files '**.sh' '**.bats' | xargs nix develop --quiet -c shfmt -w
+    - git diff --exit-code
 
 nixfmt:
   extends: .style
   script:
-    - "nix fmt"
-    - "git diff --exit-code"
+    - nix fmt
+    - git diff --exit-code
+
+deadnix:
+  extends: .style
+  script:
+    - nix develop --quiet -c deadnix --fail .
+
+editorconfig-checker:
+  extends: .style
+  script:
+    - nix develop --quiet -c editorconfig-checker -exclude '.nix-cache/.*'
+
+gitlint:
+  extends: .style
+  script:
+    - git fetch
+    - nix develop --quiet -c gitlint --commits origin/master..$CI_COMMIT_SHA
 
 ## Code Coverage stage #########################################################
 coverage:
@@ -185,28 +218,32 @@ coverage:
   extends: .nix
   needs:
     - job: tests
-      artifacts: false
+      artifacts: true
   script:
-    - "nix develop -c meson setup -Db_coverage=true build"
-    - "nix develop -c meson test -C build"
-    - "nix develop -c ninja -C build coverage-html"
-    - "mv build/meson-logs/coveragereport ./"
+    - nix develop --quiet -c ninja -j1 -C build coverage-html coverage-xml
+    - mv build/meson-logs/coveragereport ./
   coverage: '/lines\.\.\.\.\.\.: (\d+.\d+%)/'
   artifacts:
     expire_in: 1 month
     expose_as: 'Code Coverage'
     paths:
     - 'coveragereport/'
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: 'build/meson-logs/coverage.xml'
 
 ## Release creation ############################################################
 release:
   stage: release
-  image: "registry.gitlab.com/gitlab-org/release-cli:latest"
   rules:
     - if: '$CI_COMMIT_TAG'
-  needs: ["dist"]
+  image: "registry.gitlab.com/gitlab-org/release-cli:latest"
+  needs:
+    - job: tests
+      artifacts: false
   before_script:
-    - "apk update"
-    - "apk add bash curl yq"
+    - apk update
+    - apk add bash grep curl yq
   script:
-    - "bash .release.sh"
+    - ./.release.sh

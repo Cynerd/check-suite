@@ -5,13 +5,15 @@ unittests_env = [
 ]
 
 
-unittest_libcheck_suite = executable('unittest-libcheck_suite', files(
-    'example.c',
-  ),
+unittest_libcheck_suite = executable(
+  'unittest-libcheck_suite',
+  files('example.c'),
   dependencies: [libcheck_suite_dep],
   include_directories: includes,
 )
-test('unittest-libcheck_suite', test_driver,
+test(
+  'unittest-libcheck_suite',
+  test_driver,
   args: [unittest_libcheck_suite.full_path()],
   env: unittests_env,
   protocol: 'tap',
