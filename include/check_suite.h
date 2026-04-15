@@ -60,46 +60,49 @@ static void check_suite_add_tcase(TCase *tcase) {
 
 
 #define _TEST(tcase_add, tcase, name, ...) \
-	static const TTest *name; \
-	__attribute__((constructor)) static void _test_##name() { \
-		tcase_add(check_suite_tcase_##tcase(), __VA_ARGS__); \
+	static const TTest *tcase##_##name; \
+	__attribute__((constructor)) static void _test_##tcase##_##name() { \
+		tcase_add(check_suite_tcase_##tcase(), \
+			tcase##_##name __VA_OPT__(, ) __VA_ARGS__); \
 	} \
-	START_TEST(name)
+	START_TEST(tcase##_##name)
 
 
-#define TEST(tcase, name) _TEST(tcase_add_test, tcase, name, name)
+#define TEST(tcase, name) _TEST(tcase_add_test, tcase, name)
 #define TEST_RAISE_SIGNAL(tcase, name, signal) \
-	_TEST(tcase_add_test_raise_signal, tcase, name, name, signal)
+	_TEST(tcase_add_test_raise_signal, tcase, name, signal)
 #define TEST_EXIT(tcase, name, exit_value) \
-	_TEST(tcase_add_exit_test, tcase, name, name, exit_value)
+	_TEST(tcase_add_exit_test, tcase, name, exit_value)
 
 
 #define LOOP_TEST(tcase, name, s, e) \
-	_TEST(tcase_add_loop_test, tcase, name, name, s, e)
+	_TEST(tcase_add_loop_test, tcase, name, s, e)
 #define LOOP_TEST_RAISE_SIGNAL(tcase, name, signal, s, e) \
-	_TEST(tcase_add_test_raise_signal, tcase, name, name, signal, s, e)
+	_TEST(tcase_add_test_raise_signal, tcase, name, signal, s, e)
 #define LOOP_TEST_EXIT(tcase, name, exit_value, s, e) \
-	_TEST(tcase_add_exit_test, tcase, name, name, exit_value, s, e)
+	_TEST(tcase_add_exit_test, tcase, name, exit_value, s, e)
 
 
 #define _ARRAY_TEST(tcase_add, tcase, name, array, ...) \
-	static void name##_array_fn( \
+	static void tcase##_##name##_array_fn( \
 		int _i, __typeof__(*array) _d CK_ATTRIBUTE_UNUSED); \
-	_TEST(tcase_add, tcase, name, __VA_ARGS__, 0, \
+	_TEST(tcase_add, tcase, name __VA_OPT__(, ) __VA_ARGS__, 0, \
 		sizeof(array) / sizeof(*(array))) { \
-		name##_array_fn(_i, array[_i]); \
+		tcase##_##name##_array_fn(_i, array[_i]); \
 	} \
-	static void name##_array_fn(int _i, __typeof__(*array) _d CK_ATTRIBUTE_UNUSED)
+	static void tcase##_##name##_array_fn( \
+		int _i, __typeof__(*array) _d CK_ATTRIBUTE_UNUSED)
 
 #define __array_test3(tcase, name, array) \
-	_ARRAY_TEST(tcase_add_loop_test, tcase, name, array, name)
-#define __array_test2(tcase, name) __array_test3(tcase, name, name##_d)
+	_ARRAY_TEST(tcase_add_loop_test, tcase, name, array)
+#define __array_test2(tcase, name) \
+	__array_test3(tcase, name, tcase##_##name##_d)
 #define __array_test_select(_1, _2, _3, X, ...) X
 #define ARRAY_TEST(...) \
 	__array_test_select(__VA_ARGS__, __array_test3, __array_test2)(__VA_ARGS__)
 
 #define __array_test_raise_signal4(tcase, name, signal, array) \
-	_ARRAY_TEST(tcase_add_loop_test_raise_signal, tcase, name, array, name, signal)
+	_ARRAY_TEST(tcase_add_loop_test_raise_signal, tcase, name, array, signal)
 #define __array_test_raise_signal3(tcase, name, signal) \
 	__array_test_raise_signal4(tcase, name, signal, name##_d)
 #define __array_test_raise_signal_select(_1, _2, _3, _4, X, ...) X
@@ -108,7 +111,7 @@ static void check_suite_add_tcase(TCase *tcase) {
 		__array_test_raise_signal3)(__VA_ARGS__)
 
 #define __array_test_exit5(tcase, name, exit_value, array) \
-	_ARRAY_TEST(tcase_add_loop_exit_test, tcase, name, array, name, exit_value)
+	_ARRAY_TEST(tcase_add_loop_exit_test, tcase, name, array, exit_value)
 #define __array_test_exit4(tcase, name, exit_value) \
 	__array_test_exit5(tcase, name, exit_value, name##_d)
 #define __array_test_exit_select(_1, _2, _3, _4, _5, X, ...) X

@@ -48,7 +48,7 @@ END_TEST
 static const struct {
 	const char *const a;
 	const char *const b;
-} str_cmp_d[] = {
+} simple_str_cmp_d[] = {
 	{"", ""},
 	{"foo", "foo"},
 };
