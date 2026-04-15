@@ -58,6 +58,8 @@
           # Testing and code coverage
           valgrind
           gcovr
+          # Release
+          yq
         ];
         inputsFrom = [self.packages.${system}.default];
       };
