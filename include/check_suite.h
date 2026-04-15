@@ -13,6 +13,7 @@ extern SRunner *check_suite_runner;
 #ifndef SUITE
 #error Missing SUITE definition to name suite
 #endif
+[[gnu::unused]]
 static void check_suite_add_tcase(TCase *tcase) {
 	static Suite *suite = NULL;
 	if (suite == NULL) {

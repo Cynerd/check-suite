@@ -48,7 +48,6 @@
           # Linters and formatters
           deadnix
           editorconfig-checker
-          flawfinder
           gitlint
           llvmPackages.clang-tools
           muon

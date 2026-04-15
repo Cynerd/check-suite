@@ -224,6 +224,5 @@ can do:
 
 ----
 meson setup builddir
-meson compile -C builddir ./cppcheck
-meson compile -C builddir ./flawfinder
+meson compile -C builddir ./clang-tidy
 ----

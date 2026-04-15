@@ -1,10 +1,12 @@
-project('check-suite', 'c',
+project(
+  'check-suite',
+  'c',
   version: run_command(find_program('bash'), './.version.sh', check: true).stdout().strip(),
   license : 'MIT',
   default_options: 'c_std=c17',
-  meson_version: '>=0.57.0',
+  meson_version: '>=0.60.0',
 )
-pkg = import('pkgconfig')
+pkg_mod = import('pkgconfig')
 
 add_project_arguments('-D_GNU_SOURCE', language: 'c')
 cc = meson.get_compiler('c')
@@ -18,18 +20,13 @@ meson.override_dependency(meson.project_name(), libcheck_suite_dep)
 
 
 test_buildtypes = ['debug', 'debugoptimized']
-opt_tests = get_option('tests')
-if not meson.is_subproject() and (opt_tests.enabled() or (opt_tests.auto() and get_option('buildtype') in test_buildtypes))
+tests_opt = get_option('tests')
+if (
+  not meson.is_subproject()
+  and (
+    tests_opt == 'enabled'
+    or (tests_opt == 'auto' and get_option('buildtype') in test_buildtypes)
+  )
+)
   subdir('tests')
-endif
-
-
-cppcheck = find_program('cppcheck', required: false)
-if cppcheck.found()
-  run_target('cppcheck', command : [cppcheck, '--project=' + join_paths(meson.build_root(), 'compile_commands.json')])
-endif
-
-flawfinder = find_program('flawfinder', required: false)
-if flawfinder.found()
-  run_target('flawfinder', command : [flawfinder, '--error-level=5', meson.project_source_root()])
 endif

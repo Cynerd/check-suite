@@ -18,7 +18,6 @@ AllowShortLoopsOnASingleLine: false
 AlwaysBreakAfterDefinitionReturnType: None
 AlwaysBreakBeforeMultilineStrings: false
 AlwaysBreakAfterReturnType: None
-AlwaysBreakBeforeMultilineStrings: false
 BinPackArguments: true
 BinPackParameters: true
 BitFieldColonSpacing: None
@@ -34,16 +33,16 @@ BraceWrapping:
   BeforeWhile: false
   IndentBraces: false
   SplitEmptyFunction: true
+BreakAfterAttributes: Always
 BreakBeforeBinaryOperators: None
 BreakBeforeBraces: Custom
 BreakBeforeTernaryOperators: true
 BreakStringLiterals: false
 ColumnLimit: 80
 ContinuationIndentWidth: 4
-#DisableFormat: false
 IncludeBlocks: Preserve
 IndentCaseLabels: true
-IndentExternBlock: true
+IndentExternBlock: false
 IndentGotoLabels: true
 IndentPPDirectives: None
 IndentWidth: 4
@@ -65,7 +64,6 @@ SpacesBeforeTrailingComments: 1
 SpacesInCStyleCastParentheses: false
 SpacesInContainerLiterals: false
 SpacesInConditionalStatement: false
-SpacesInContainerLiterals: false
 SpacesInParentheses: false
 SpacesInSquareBrackets: false
 TabWidth: 4

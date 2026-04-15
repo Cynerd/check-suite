@@ -33,16 +33,17 @@ devenv:
   extends: .nix
   script:
     - nix develop -c true
+    - nix develop .#musl -c true
+
+.musl:
+  variables:
+    NIXATTR: .#musl
 
 ## Build stage #################################################################
 .build:
   stage: build
   extends: .nix
   needs: ["devenv"]
-
-.musl:
-  variables:
-    NIXATTR: .#musl
 
 build:
   extends: .build
@@ -87,37 +88,53 @@ nix:musl:
   extends: .nix
   needs: ["devenv"]
 
-tests:
+.test-meson:
   extends: .test
-  needs: ["build"]
   script:
     - ulimit -n 1024 # workaround for Valgrind
-    - nix develop --quiet $NIXATTR -c meson setup build -Doptimization=plain -Db_coverage=true
-    - nix develop --quiet $NIXATTR -c meson test -C build
+    - nix develop --quiet -c meson setup build -Doptimization=plain $SETUPARG
+    - nix develop --quiet -c meson test -C build --print-errorlogs $TESTARG
   artifacts:
-    expire_in: 1 week
+    when: always
     paths:
       - 'build/'
+
+tests:
+  extends: .test-meson
+  needs:
+    - job: build
+      artifacts: false
+  variables:
+    SETUPARG: -Db_coverage=true # Used in coverage job
+  artifacts:
     reports:
       junit: 'build/meson-logs/testlog.junit.xml'
 
 tests:musl:
   extends: ["tests", ".musl"]
-  needs: ["build:musl"]
+  needs:
+    - job: build:musl
+      artifacts: false
   allow_failure: true
 
-valgrind:memcheck:
+.test-valgrind:
   extends: tests
+  needs:
+    - job: tests
+      artifacts: false
+
+valgrind:memcheck:
+  extends: .test-valgrind
   variables:
     VALGRIND: memcheck
 
 valgrind:helgrind:
-  extends: tests
+  extends: .test-valgrind
   variables:
     VALGRIND: helgrind
 
 valgrind:drd:
-  extends: tests
+  extends: .test-valgrind
   variables:
     VALGRIND: drd
 
@@ -139,31 +156,26 @@ include:
   needs: ["devenv"]
   allow_failure: true
 
-.mesonlinter:
+muon-analyze:
   extends: .linter
   script:
-    - nix develop --quiet -c meson setup build -Doptimization=plain
-    - nix develop --quiet -c meson compile -C build $COMPILE_ARG
+    - nix run --quiet .#muon -- analyze
 
-cppcheck:
-  extends: .mesonlinter
-  variables:
-    COMPILE_ARG: ./cppcheck
-
-flawfinder:
-  extends: .mesonlinter
-  variables:
-    COMPILE_ARG: ./flawfinder
+clang-tidy:
+  extends: .linter
+  needs: ["build"]
+  script:
+    - nix develop --quiet -c ninja -C build clang-tidy
 
 shellcheck:
   extends: .linter
   script:
-    - git ls-files '**.sh' | xargs nix develop --quiet -c shellcheck
+    - git ls-files '**.sh' | xargs nix run --quiet .#shellcheck
 
 statix:
   extends: .linter
   script:
-    - nix develop --quiet -c statix check .
+      - nix run --quiet .#statix -- check .
 
 ## Code Style stage ############################################################
 .style:
@@ -175,50 +187,50 @@ statix:
 muon:
   extends: .style
   script:
-    - git ls-files '**/meson.build' meson_options.txt | nix develop --quiet -c xargs -n 1 muon fmt -c .muon_fmt.ini -i
+    - |
+      git ls-files '**/meson.build' meson_options.txt |
+        xargs nix run --quiet .#muon -- fmt -e -i
     - git diff --exit-code
 
 clang-format:
   extends: .style
+  needs: ["build"]
   script:
-    - git ls-files '**.[ch]' | xargs nix develop --quiet -c clang-format -i
+    - nix develop --quiet -c ninja -C build clang-format
     - git diff --exit-code
 
 shell-format:
   extends: .style
   script:
-    - git ls-files '**.sh' '**.bats' | xargs nix develop --quiet -c shfmt -w
-    - git diff --exit-code
+    - git ls-files '**.sh' '**.bats' | xargs nix run --quiet .#shfmt -- -d
 
 nixfmt:
   extends: .style
   script:
-    - nix fmt
+    - nix fmt .
     - git diff --exit-code
 
 deadnix:
   extends: .style
   script:
-    - nix develop --quiet -c deadnix --fail .
+    - nix run --quiet .#deadnix -- --fail .
 
 editorconfig-checker:
   extends: .style
   script:
-    - nix develop --quiet -c editorconfig-checker -exclude '.nix-cache/.*'
+    - nix run --quiet .#editorconfig-checker -- -exclude '.nix-cache/.*'
 
 gitlint:
   extends: .style
   script:
     - git fetch
-    - nix develop --quiet -c gitlint --commits origin/master..$CI_COMMIT_SHA
+    - nix run --quiet .#gitlint -- --commits origin/master..$CI_COMMIT_SHA
 
 ## Code Coverage stage #########################################################
 coverage:
   stage: coverage
   extends: .nix
-  needs:
-    - job: tests
-      artifacts: true
+  needs: ["tests"]
   script:
     - nix develop --quiet -c ninja -j1 -C build coverage-html coverage-xml
     - mv build/meson-logs/coveragereport ./
@@ -232,6 +244,7 @@ coverage:
       coverage_report:
         coverage_format: cobertura
         path: 'build/meson-logs/coverage.xml'
+
 
 ## Release creation ############################################################
 release:

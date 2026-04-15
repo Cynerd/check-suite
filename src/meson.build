@@ -6,7 +6,8 @@ libcheck_suite = library(
   version: '0.0.0',
   dependencies: [check],
   include_directories: includes,
-  link_args: '-Wl,--version-script=' + join_paths(
+  link_args: '-Wl,--version-script='
+  + join_paths(
     meson.current_source_dir(),
     'libcheck_suite.version',
   ),
@@ -20,8 +21,7 @@ libcheck_suite_dep = declare_dependency(
   link_with: libcheck_suite,
 )
 
-
-pkg.generate(
+pkg_mod.generate(
   libcheck_suite,
   description: 'Unit testing framework for C with implicit suite registration',
   requires: 'check',
