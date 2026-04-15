@@ -5,21 +5,20 @@
 
   outputs = {
     self,
-    flake-utils,
+    systems,
     nixpkgs,
     semver,
   }: let
-    inherit (nixpkgs.lib) hasSuffix mapAttrs;
-    inherit (flake-utils.lib) eachDefaultSystem filterPackages;
+    inherit (nixpkgs.lib) genAttrs;
     inherit (semver.lib) changelog;
+    forSystems = genAttrs (import systems);
+    forSystemsPkgs = func: forSystems (system: func system self.legacyPackages.${system});
 
+    name = "check-suite";
     version = changelog.currentRelease ./CHANGELOG.md self.sourceInfo;
-    src = builtins.path {
-      path = ./.;
-      filter = path: _: ! hasSuffix ".nix" path;
-    };
+    src = ./.;
 
-    check-suite = {
+    package = {
       stdenv,
       meson,
       ninja,
@@ -27,54 +26,50 @@
       check,
     }:
       stdenv.mkDerivation {
-        pname = "check-suite";
+        pname = name;
         inherit version src;
         GIT_REV = self.shortRev or self.dirtyShortRev;
         buildInputs = [check];
         nativeBuildInputs = [meson ninja pkg-config];
       };
-  in
-    {
-      overlays.default = final: prev: {
-        check-suite = prev.callPackage check-suite {};
-      };
-    }
-    // eachDefaultSystem (system: let
-      pkgs = nixpkgs.legacyPackages.${system}.extend self.overlays.default;
-    in {
-      packages = {
-        default = pkgs.check-suite;
-        musl = pkgs.pkgsMusl.check-suite;
-      };
-      legacyPackages = pkgs;
+  in {
+    overlays.default = final: _: {
+      "${name}" = final.callPackage package {};
+    };
 
-      devShells = filterPackages system (let
-        devpkgs = with pkgs; [
+    packages = forSystemsPkgs (_: pkgs: {
+      default = pkgs."${name}";
+      musl = pkgs.pkgsMusl.check-suite;
+    });
+
+    devShells = forSystemsPkgs (system: pkgs: {
+      default = pkgs.mkShell {
+        packages = with pkgs; [
           # Linters and formatters
-          clang-tools_14
-          cppcheck
+          deadnix
           editorconfig-checker
           flawfinder
+          gitlint
+          llvmPackages.clang-tools
           muon
           shellcheck
           shfmt
           statix
-          deadnix
-          gitlint
           # Testing and code coverage
           valgrind
           gcovr
         ];
-      in
-        mapAttrs (n: v:
-          pkgs.mkShell {
-            packages = devpkgs;
-            inputsFrom = [v];
-          })
-        self.packages.${system});
-
-      checks.default = self.packages.${system}.default;
-
-      formatter = pkgs.alejandra;
+        inputsFrom = [self.packages.${system}.default];
+      };
     });
+
+    checks = forSystems (system: {
+      inherit (self.packages.${system}) default;
+    });
+    formatter = forSystemsPkgs (_: pkgs: pkgs.alejandra);
+
+    legacyPackages =
+      forSystems (system:
+        nixpkgs.legacyPackages.${system}.extend self.overlays.default);
+  };
 }
