@@ -25,8 +25,9 @@ unittests_env = [
 ]
 
 tests = [
-  'example',
   'empty',
+  'cases',
+  'example',
 ]
 
 foreach name : tests
@@ -38,6 +39,7 @@ foreach name : tests
       dependencies: [libcheck_suite_dep],
       include_directories: includes,
     ),
+    suite: name,
     env: unittests_env,
     protocol: 'tap',
   )

@@ -2,12 +2,24 @@
 root = true
 
 [*]
-encoding = utf-8
+charset = utf-8
 end_of_line = lf
 insert_final_newline = true
 trim_trailing_whitespace = true
 
-# C code rules
+[*.adoc]
+indent_size = 4
+max_line_length = 80
+
+[*.md]
+indent_style = space
+indent_size = 2
+max_line_length = 80
+# Trailing whitespaces have meaning in Markdown
+trim_trailing_whitespace = false
+[CHANGELOG.md]
+max_line_length = 72
+
 [*.{c,h}]
 indent_style = tab
 tab_width = 4
@@ -16,20 +28,24 @@ max_line_length = 80
 curly_bracket_next_line = false
 indent_brace_style = K&R
 
-[meson.build]
+[{meson.build,meson_options.txt}]
 indent_style  = space
 indent_size = 2
+max_line_length = 80
 
 [*.{sh,bats}]
 indent_style = tab
+tab_width = 4
+indent_size = 4
 max_line_length = 80
 
-[.gitlab-ci.yml]
-indent_style  = space
-indent_size = 2
-
-[*.nix]
+[*.py]
 indent_style = space
+indent_size = 4
+max_line_length = 79
+
+[*.{nix,yml,toml}]
+indent_style  = space
 indent_size = 2
 
 [*.{diff,patch}]

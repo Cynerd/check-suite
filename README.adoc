@@ -171,6 +171,25 @@ TIP: The `array` is optional and if not specified then it is expected to be
 `${TCASE}_${TNAME}_d` where `${TCASE}` is test case name and `${TNAME}` is test
 name.
 
+==== Including test in multiple test cases
+
+In some cases it is beneficial to use test case's setup to configure different
+global states and run the same test within these different states. There are few
+different ways to achieve that.
+
+* You can call any function from within test and so you can create common test
+  function that is called by multiple tests.
+* It is possible to use Check's native `START_TEST` definition of the test and
+  register it manually in `TEST_CASE` function body. This will bypass most of
+  the Check Suite machinery, but is most versatile way.
+* The last is the Check Suite native way with `TEST_CASES` macro.
+
+The `TEST_CASES` macro can group multiple test cases to a new one (this can be
+recursive and thus test case create with `TEST_CASES` can be included in it).
+Any test defined to be part of this test cases grouping will be added to all of
+specified test cases. For an example you can read link:./tests/cases.c[test
+cases].
+
 ==== Futher check runner modifications
 
 There is possibility to modify Check's runner manually, although Check Suite is

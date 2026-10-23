@@ -5,6 +5,7 @@
 #ifndef _CHECK_SUITE_H_
 #define _CHECK_SUITE_H_
 #include <check.h>
+#include <stdbool.h>
 #include <math.h>
 
 extern SRunner *check_suite_runner;
@@ -26,6 +27,15 @@ static void check_suite_add_tcase(TCase *tcase) {
 }
 
 
+struct _tcase_generic {
+	size_t cnt; /* 0 for u_tcase and number of tcases for u_tcases */
+	union {
+		TCase *u_tcase;
+		struct _tcase_generic **u_tcases;
+	};
+};
+
+
 #ifndef DEFAULT_SETUP
 #define DEFAULT_SETUP NULL
 #endif
@@ -35,17 +45,18 @@ static void check_suite_add_tcase(TCase *tcase) {
 
 #define _TEST_CASE(name, setup, teardown, timeout) \
 	static void _tcase_##name(TCase *tcase); \
-	static TCase *check_suite_tcase_##name() { \
-		static TCase *tcase = NULL; \
-		if (tcase == NULL) { \
-			tcase = tcase_create(#name); \
-			tcase_add_checked_fixture(tcase, setup, teardown); \
+	static struct _tcase_generic *check_suite_tcase_##name() { \
+		static struct _tcase_generic tcg = {}; \
+		if (tcg.u_tcase == NULL) { \
+			tcg.cnt = 0; \
+			tcg.u_tcase = tcase_create(#name); \
+			tcase_add_checked_fixture(tcg.u_tcase, setup, teardown); \
 			if (!isnan(timeout)) \
-				tcase_set_timeout(tcase, timeout); \
-			check_suite_add_tcase(tcase); \
-			_tcase_##name(tcase); \
+				tcase_set_timeout(tcg.u_tcase, timeout); \
+			check_suite_add_tcase(tcg.u_tcase); \
+			_tcase_##name(tcg.u_tcase); \
 		} \
-		return tcase; \
+		return &tcg; \
 	} \
 	static void _tcase_##name(TCase *tcase)
 #define __test_case1(name) \
@@ -58,12 +69,71 @@ static void check_suite_add_tcase(TCase *tcase) {
 	__test_case_select(__VA_ARGS__, _TEST_CASE, __test_case3, __test_case2, \
 		__test_case1)(__VA_ARGS__)
 
+#define __test_cases_n(...) \
+	__test_cases_n_( \
+		__VA_ARGS__, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
+#define __test_cases_n_( \
+	_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, N, ...) \
+	N
+#define __test_cases_c(x, tcase) tcases[x] = check_suite_tcase_##tcase();
+#define __test_cases_15(tcase, ...) __test_cases_c(15, tcase)
+#define __test_cases_14(tcase, ...) \
+	__test_cases_c(14, tcase) __VA_OPT__(__test_cases_15(__VA_ARGS__))
+#define __test_cases_13(tcase, ...) \
+	__test_cases_c(13, tcase) __VA_OPT__(__test_cases_14(__VA_ARGS__))
+#define __test_cases_12(tcase, ...) \
+	__test_cases_c(12, tcase) __VA_OPT__(__test_cases_13(__VA_ARGS__))
+#define __test_cases_11(tcase, ...) \
+	__test_cases_c(11, tcase) __VA_OPT__(__test_cases_12(__VA_ARGS__))
+#define __test_cases_10(tcase, ...) \
+	__test_cases_c(10, tcase) __VA_OPT__(__test_cases_11(__VA_ARGS__))
+#define __test_cases_09(tcase, ...) \
+	__test_cases_c(9, tcase) __VA_OPT__(__test_cases_10(__VA_ARGS__))
+#define __test_cases_08(tcase, ...) \
+	__test_cases_c(8, tcase) __VA_OPT__(__test_cases_09(__VA_ARGS__))
+#define __test_cases_07(tcase, ...) \
+	__test_cases_c(7, tcase) __VA_OPT__(__test_cases_08(__VA_ARGS__))
+#define __test_cases_06(tcase, ...) \
+	__test_cases_c(6, tcase) __VA_OPT__(__test_cases_07(__VA_ARGS__))
+#define __test_cases_05(tcase, ...) \
+	__test_cases_c(5, tcase) __VA_OPT__(__test_cases_06(__VA_ARGS__))
+#define __test_cases_05(tcase, ...) \
+	__test_cases_c(5, tcase) __VA_OPT__(__test_cases_06(__VA_ARGS__))
+#define __test_cases_04(tcase, ...) \
+	__test_cases_c(4, tcase) __VA_OPT__(__test_cases_05(__VA_ARGS__))
+#define __test_cases_03(tcase, ...) \
+	__test_cases_c(3, tcase) __VA_OPT__(__test_cases_04(__VA_ARGS__))
+#define __test_cases_02(tcase, ...) \
+	__test_cases_c(2, tcase) __VA_OPT__(__test_cases_03(__VA_ARGS__))
+#define __test_cases_01(tcase, ...) \
+	__test_cases_c(1, tcase) __VA_OPT__(__test_cases_02(__VA_ARGS__))
+#define __test_cases_00(tcase, ...) \
+	__test_cases_c(0, tcase) __VA_OPT__(__test_cases_01(__VA_ARGS__))
+#define TEST_CASES(name, tcase, ...) \
+	static struct _tcase_generic *check_suite_tcase_##name() { \
+		static struct _tcase_generic tcg = {}; \
+		static struct _tcase_generic *tcases[__test_cases_n(__VA_ARGS__)]; \
+		if (tcg.u_tcases == NULL) { \
+			tcg.cnt = __test_cases_n(__VA_ARGS__); \
+			tcg.u_tcases = tcases; \
+			__test_cases_00(tcase __VA_OPT__(, __VA_ARGS__)) \
+		} \
+		return &tcg; \
+	}
+
 
 #define _TEST(tcase_add, tcase, name, ...) \
 	static const TTest *tcase##_##name; \
+	static void _test_##tcase##_##name##_register(struct _tcase_generic *tcg) { \
+		if (tcg->cnt) { \
+			for (size_t i = 0; i < tcg->cnt; i++) \
+				_test_##tcase##_##name##_register(tcg->u_tcases[i]); \
+		} else { \
+			tcase_add(tcg->u_tcase, tcase##_##name __VA_OPT__(, ) __VA_ARGS__); \
+		} \
+	} \
 	__attribute__((constructor)) static void _test_##tcase##_##name() { \
-		tcase_add(check_suite_tcase_##tcase(), \
-			tcase##_##name __VA_OPT__(, ) __VA_ARGS__); \
+		_test_##tcase##_##name##_register(check_suite_tcase_##tcase()); \
 	} \
 	START_TEST(tcase##_##name)
 

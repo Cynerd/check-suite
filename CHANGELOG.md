@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+### Added
+- `TEST_CASES` that allow grouping `TEST_CASE` and in that way simple inclusion
+  of the same test in different cases
+
+
 ## [2.0.0] - 2026-04-21
 ### Changed
 - test name no longer has to be unique in the whole test suite, it just has to

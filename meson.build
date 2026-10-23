@@ -2,7 +2,7 @@ project(
   'check-suite',
   'c',
   version: run_command(find_program('bash'), './.version.sh', check: true).stdout().strip(),
-  license : 'MIT',
+  license: 'MIT',
   default_options: 'c_std=c17',
   meson_version: '>=0.60.0',
 )
@@ -17,7 +17,6 @@ subdir('include')
 subdir('src')
 
 meson.override_dependency(meson.project_name(), libcheck_suite_dep)
-
 
 test_buildtypes = ['debug', 'debugoptimized']
 tests_opt = get_option('tests')
